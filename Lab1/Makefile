@@ -4,8 +4,10 @@ ICC = ~/ICC/bin/icc
 OPT = -O3
 
 FILES = complex-matmul-harness.c
+ORIGIN = original.c
 
 OUT_NAME_GCC = GCC_LAB1
+OUT_NAME_ORIGIN = GCC_ORIGIN
 OUT_NAME_ICC = ICC_LAB1
 
 all: icc gcc
@@ -16,3 +18,5 @@ icc:
 clean:
 	rm $(OUT_NAME_ICC) $(OUT_NAME_GCC)
 rebuild: clean all
+origin:
+	$(GCC) $(ORIGIN) -o $(OUT_NAME_ORIGIN) $(OPT)
