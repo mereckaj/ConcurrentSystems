@@ -137,20 +137,6 @@ inline __m128 mul_4_float(float a1, float a2,float a3, float a4, float b1, float
 /* the fast version of matmul written by the team */
 void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a_dim1, int a_dim2, int b_dim2) {
   int i, j, k;
-  int a_dim2_mul_2,remainder;
-  float vector[4];
-  float t1,t2,t3,t4;
-  /*
-    Below, Check if a_dim2 is a multiple of 2, if it isnt, make it a multiple of 2
-    and set the remainder.
-  */
-  if(a_dim2%2!=0){
-    remainder = a_dim2 % 2;
-    a_dim2_mul_2 = a_dim2 - remainder;
-  }else{
-    a_dim2_mul_2 = a_dim2;
-    remainder = 0;
-  }
   for (i = 0; i < a_dim1; i++) {
     for (j = 0; j < b_dim2; j++) {
       struct complex sum;
