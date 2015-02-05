@@ -157,7 +157,7 @@ void matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a
 
 /* the fast version of matmul written by the team */
 void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a_dim1, int a_dim2, int b_dim2) {
-  #pragma omp parallel for num_threads(5)
+  #pragma omp parallel for
   for (int i = 0; i < a_dim1; i++ ) {
     for(int j = 0; j < b_dim2; j++ ) {
       struct complex sum;
@@ -238,11 +238,11 @@ int main(int argc, char ** argv)
   mul_time = time_diff(&start_time, &stop_time);
   speedup = (float) control_time / mul_time;
 
-  printf("Matmul time: %lld microseconds\n", mul_time);
-  printf("Control time : %lld microseconds\n", control_time);
-  if (mul_time > 0 && control_time > 0) {
-    printf("speedup: %.2fx\n", speedup);
-  }
+  printf("%lld microseconds\n", mul_time);
+  printf("%lld microseconds\n", control_time);
+  // if (mul_time > 0 && control_time > 0) {
+  //   printf("speedup: %.2fx\n", speedup);
+  // }
 
   /* now check that the team's matmul routine gives the same answer
      as the known working version */
