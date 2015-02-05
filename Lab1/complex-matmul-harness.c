@@ -157,25 +157,19 @@ void matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a
 
 /* the fast version of matmul written by the team */
 void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a_dim1, int a_dim2, int b_dim2) {
-  int i, j, k;
-
-  // #pragma omp parallel
-  // {
-    
-  //   #pragma omp for
-    for ( i = 0; i < a_dim1; i++ ) {
-      for( j = 0; j < b_dim2; j++ ) {
-        struct complex sum;
-        sum.real = 0.0;
-        sum.imag = 0.0;
-        for ( k = 0; k < a_dim2; k++ ) {
-          sum.real += A[i][k].real * B[k][j].real - A[i][k].imag * B[k][j].imag;
-          sum.imag += A[i][k].real * B[k][j].imag + A[i][k].imag * B[k][j].real;
-        }
-        C[i][j] = sum;
+  #pragma omp parallel for num_threads(5)
+  for (int i = 0; i < a_dim1; i++ ) {
+    for(int j = 0; j < b_dim2; j++ ) {
+      struct complex sum;
+      sum.real = 0.0;
+      sum.imag = 0.0;
+      for (int k = 0; k < a_dim2; k++ ) {
+        sum.real += A[i][k].real * B[k][j].real - A[i][k].imag * B[k][j].imag;
+        sum.imag += A[i][k].real * B[k][j].imag + A[i][k].imag * B[k][j].real;
       }
+      C[i][j] = sum;
     }
-  // }
+  }
 }
 
 long long time_diff(struct timeval * start, struct timeval * end) {
