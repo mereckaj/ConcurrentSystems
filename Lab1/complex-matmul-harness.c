@@ -6,9 +6,10 @@
 #include <sys/time.h>
 #include <assert.h>
 #include <omp.h>
-
+#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <xmmintrin.h>
 
 /* the following two definitions of DEBUGGING control whether or not
    debugging information is written out. To put the program into
@@ -41,6 +42,7 @@ struct complex ** new_empty_matrix(int dim1, int dim2)
 {
   struct complex ** result = malloc(sizeof(struct complex*) * dim1);
   struct complex * new_matrix = malloc(sizeof(struct complex) * dim1 * dim2);
+  memset(new_matrix,0,sizeof(struct complex) * dim1 * dim2);
   int i;
 
   for ( i = 0; i < dim1; i++ ) {
@@ -160,14 +162,19 @@ void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, 
   #pragma omp parallel for
   for (int i = 0; i < a_dim1; i++ ) {
     for(int j = 0; j < b_dim2; j++ ) {
-      struct complex sum;
-      sum.real = 0.0;
-      sum.imag = 0.0;
+      float sum_real = 0.0;
+      float sum_imag = 0.0;
       for (int k = 0; k < a_dim2; k++ ) {
-        sum.real += A[i][k].real * B[k][j].real - A[i][k].imag * B[k][j].imag;
-        sum.imag += A[i][k].real * B[k][j].imag + A[i][k].imag * B[k][j].real;
+        sum_real += A[i][k].real * B[k][j].real - A[i][k].imag * B[k][j].imag;
+        sum_imag += A[i][k].real * B[k][j].imag + A[i][k].imag * B[k][j].real;
       }
-      C[i][j] = sum;
+      // j++;
+      // for (int k = a_dim2; k >0 ; k--) {
+      //   sum_real += A[i][k].real * B[k][j].real - A[i][k].imag * B[k][j].imag;
+      //   sum_imag += A[i][k].real * B[k][j].imag + A[i][k].imag * B[k][j].real;
+      // }
+      C[i][j].real = sum_real;
+      C[i][j].imag = sum_imag;
     }
   }
 }
@@ -210,6 +217,16 @@ int main(int argc, char ** argv)
   C = new_empty_matrix(a_dim1, b_dim2);
   control_matrix = new_empty_matrix(a_dim1, b_dim2);
 
+  for (int i = 0; i < a_dim1; i++ ) {
+    for(int j = 0; j < b_dim2; j++ ) {
+      struct complex sum;
+      sum.real = 0.0;
+      sum.imag = 0.0;
+      C[i][j] = sum;
+    }
+  }
+
+
   DEBUGGING( {
     printf("matrix A:\n");
     write_out(A, a_dim1, a_dim2);
@@ -238,11 +255,11 @@ int main(int argc, char ** argv)
   mul_time = time_diff(&start_time, &stop_time);
   speedup = (float) control_time / mul_time;
 
-  printf("%lld microseconds\n", mul_time);
-  printf("%lld microseconds\n", control_time);
-  // if (mul_time > 0 && control_time > 0) {
-  //   printf("speedup: %.2fx\n", speedup);
-  // }
+  printf("A:%lld\n", mul_time);
+  printf("B:%lld\n", control_time);
+  if (mul_time > 0 && control_time > 0) {
+    printf("speedup: %.2fx\n", speedup);
+  }
 
   /* now check that the team's matmul routine gives the same answer
      as the known working version */

@@ -1,7 +1,7 @@
 GCC = gcc
 ICC = ~/ICC/bin/icc
 
-OPT = -O0 -fopenmp -std=c99
+OPT = -O1 -fopenmp -std=c99
 
 FILES = complex-matmul-harness.c
 ORIGIN = original.c
