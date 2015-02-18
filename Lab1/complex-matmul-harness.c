@@ -156,10 +156,38 @@ void matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a
     }
   }
 }
-
+void no_omp_matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a_dim1, int a_dim2, int b_dim2){
+  for (int i = 0; i < a_dim1; i++ ) {
+    for(int j = 0; j < b_dim2; j++ ) {
+      float sum_real = 0.0;
+      float sum_imag = 0.0;
+      for (int k = 0; k < a_dim2; k++ ) {
+        sum_real += A[i][k].real * B[k][j].real - A[i][k].imag * B[k][j].imag;
+        sum_imag += A[i][k].real * B[k][j].imag + A[i][k].imag * B[k][j].real;
+      }
+      C[i][j].real = sum_real;
+      C[i][j].imag = sum_imag;
+    }
+  }
+}
 /* the fast version of matmul written by the team */
 void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a_dim1, int a_dim2, int b_dim2) {
-  #pragma omp parallel for  
+  int s;
+  if(a_dim1<20){
+    no_omp_matmul(A,B,C,a_dim1,a_dim2,b_dim2);
+    return;
+  } else if(a_dim1<50){
+    s = 5;
+  } else if(a_dim1<100){
+    s =12;
+  } else if(a_dim1<200){
+    s = 30;
+  } else {
+    s = 32;
+  }
+  omp_set_dynamic(0);
+  omp_set_num_threads(s); 
+  #pragma omp parallel for
   for (int i = 0; i < a_dim1; i++ ) {
     for(int j = 0; j < b_dim2; j++ ) {
       float sum_real = 0.0;
@@ -177,10 +205,16 @@ void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, 
 long long time_diff(struct timeval * start, struct timeval * end) {
   return (end->tv_sec - start->tv_sec) * 1000000L + (end->tv_usec - start->tv_usec);
 }
-
+void transpose(struct complex ** B,struct complex **T,int r, int c){
+  for(int i = 0;i< r;i++){
+    for(int j = 0; j < c;j++){
+      T[j][i] = B[i][j];
+    }
+  }
+}
 int main(int argc, char ** argv)
 {
-  struct complex ** A, ** B, ** C;
+  struct complex ** A, ** B, ** C,**T;
   struct complex ** control_matrix;
   long long control_time, mul_time;
   double speedup;
@@ -209,6 +243,10 @@ int main(int argc, char ** argv)
   /* allocate the matrices */
   A = gen_random_matrix(a_dim1, a_dim2);
   B = gen_random_matrix(b_dim1, b_dim2);
+  T = new_empty_matrix(b_dim2, b_dim1);
+  write_out(b,b_dim1,b_dim2);
+  transpose(B,T,b_dim1,b_dim2);
+  write_out(T,b_dim1,b_dim2);
   C = new_empty_matrix(a_dim1, b_dim2);
   control_matrix = new_empty_matrix(a_dim1, b_dim2);
 
@@ -234,7 +272,7 @@ int main(int argc, char ** argv)
   gettimeofday(&pre_time, NULL);
 
   /* use a simple matmul routine to produce control result */
- matmul(A, B, control_matrix, a_dim1, a_dim2, b_dim2);
+  matmul(A, B, control_matrix, a_dim1, a_dim2, b_dim2);
 
   /* record starting time */
   gettimeofday(&start_time, NULL);
