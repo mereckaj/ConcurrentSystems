@@ -174,20 +174,36 @@ void no_omp_matmul(struct complex ** A, struct complex ** B, struct complex ** C
 /* the fast version of matmul written by the team */
 void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a_dim1, int a_dim2, int b_dim2) {
   int s;
-  if(a_dim1<20){
+  /*
+  * If there's less than 35 rows then dont use any threads.
+  * Otherwise use the fancy equations of a_row * 0.12 to get the number
+  * of threads needed. This number didn't come out of the air. I ran the program
+  * over and over with different matrix sizes and different number of threads
+  * and used the data gathered to calculate that value
+  *
+  * There is no logical reason to use more thant 64 threads for this program on 
+  * stoker "four processors. Each processor has eight out-of-order pipelined, superscalar cores"
+  */
+  if(a_dim1<35){
     no_omp_matmul(A,B,C,a_dim1,a_dim2,b_dim2);
     return;
   } else {
-    s = (int) floor(((float)a_dim1*0.16));
+    s = (int) floor(((float)a_dim1*0.12));
     if(s>64){
       s=64;
     }
   }
+  /*
+  * The workload is always the same, so no point in usign guided or dynamic scheduling
+  */
   omp_set_dynamic(0);
   omp_set_num_threads(s); 
   #pragma omp parallel for
   for (int i = 0; i < a_dim1; i++ ) {
     for(int j = 0; j < b_dim2; j++ ) {
+      /*
+      * Use these 
+      */
       float sum_real = 0.0;
       float sum_imag = 0.0;
       for (int k = 0; k < a_dim2; k++ ) {
