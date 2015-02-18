@@ -162,8 +162,8 @@ void no_omp_matmul(struct complex ** A, struct complex ** B, struct complex ** C
       float sum_real = 0.0;
       float sum_imag = 0.0;
       for (int k = 0; k < a_dim2; k++ ) {
-        sum_real += A[i][k].real * B[k][j].real - A[i][k].imag * B[k][j].imag;
-        sum_imag += A[i][k].real * B[k][j].imag + A[i][k].imag * B[k][j].real;
+        sum_real += A[i][k].real * B[j][k].real - A[i][k].imag * B[j][k].imag;
+        sum_imag += A[i][k].real * B[j][k].imag + A[i][k].imag * B[j][k].real;
       }
       C[i][j].real = sum_real;
       C[i][j].imag = sum_imag;
@@ -172,6 +172,36 @@ void no_omp_matmul(struct complex ** A, struct complex ** B, struct complex ** C
 }
 /* the fast version of matmul written by the team */
 void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a_dim1, int a_dim2, int b_dim2) {
+  int s;
+  if(a_dim1<20){
+    no_omp_matmul(A,B,C,a_dim1,a_dim2,b_dim2);
+    return;
+  } else if(a_dim1<50){
+    s = 5;
+  } else if(a_dim1<100){
+    s =12;
+  } else if(a_dim1<200){
+    s = 30;
+  } else {
+    s = 32;
+  }
+  omp_set_dynamic(0);
+  omp_set_num_threads(s); 
+  #pragma omp parallel for
+  for (int i = 0; i < a_dim1; i++ ) {
+    for(int j = 0; j < b_dim2; j++ ) {
+      float sum_real = 0.0;
+      float sum_imag = 0.0;
+      for (int k = 0; k < a_dim2; k++ ) {
+        sum_real += A[i][k].real * B[j][k].real - A[i][k].imag * B[j][k].imag;
+        sum_imag += A[i][k].real * B[j][k].imag + A[i][k].imag * B[j][k].real;
+      }
+      C[i][j].real = sum_real;
+      C[i][j].imag = sum_imag;
+    }
+  }
+}
+void team_matmul_no_t(struct complex ** A, struct complex ** B, struct complex ** C, int a_dim1, int a_dim2, int b_dim2) {
   int s;
   if(a_dim1<20){
     no_omp_matmul(A,B,C,a_dim1,a_dim2,b_dim2);
@@ -216,10 +246,10 @@ int main(int argc, char ** argv)
 {
   struct complex ** A, ** B, ** C,**T;
   struct complex ** control_matrix;
-  long long control_time, mul_time;
-  double speedup;
+  long long control_time, mul_time,mul_t;
+  double speedup,speedup_2;
   int a_dim1, a_dim2, b_dim1, b_dim2, errs;
-  struct timeval pre_time, start_time, stop_time;
+  struct timeval pre_time, start_time,stop_time_t, stop_time;
 
   if ( argc != 5 ) {
     fprintf(stderr, "Usage: matmul-harness <A nrows> <A ncols> <B nrows> <B ncols>\n");
@@ -244,9 +274,6 @@ int main(int argc, char ** argv)
   A = gen_random_matrix(a_dim1, a_dim2);
   B = gen_random_matrix(b_dim1, b_dim2);
   T = new_empty_matrix(b_dim2, b_dim1);
-  write_out(b,b_dim1,b_dim2);
-  transpose(B,T,b_dim1,b_dim2);
-  write_out(T,b_dim1,b_dim2);
   C = new_empty_matrix(a_dim1, b_dim2);
   control_matrix = new_empty_matrix(a_dim1, b_dim2);
 
@@ -278,10 +305,11 @@ int main(int argc, char ** argv)
   gettimeofday(&start_time, NULL);
 
   /* perform matrix multiplication */
-  team_matmul(A, B, C, a_dim1, a_dim2, b_dim2);
+  transpose(B,T,b_dim1,b_dim2);
+  team_matmul(A, T, C, a_dim1, a_dim2, b_dim2);
 
   /* record finishing time */
-  gettimeofday(&stop_time, NULL);
+  gettimeofday(&stop_time, NULL); 
 
   /* compute elapsed times and speedup factor */
  control_time = time_diff(&pre_time, &start_time);
