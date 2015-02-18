@@ -159,7 +159,7 @@ void matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a
 
 /* the fast version of matmul written by the team */
 void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a_dim1, int a_dim2, int b_dim2) {
-  #pragma omp parallel for
+  #pragma omp parallel for  
   for (int i = 0; i < a_dim1; i++ ) {
     for(int j = 0; j < b_dim2; j++ ) {
       float sum_real = 0.0;
@@ -168,11 +168,6 @@ void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, 
         sum_real += A[i][k].real * B[k][j].real - A[i][k].imag * B[k][j].imag;
         sum_imag += A[i][k].real * B[k][j].imag + A[i][k].imag * B[k][j].real;
       }
-      // j++;
-      // for (int k = a_dim2; k >0 ; k--) {
-      //   sum_real += A[i][k].real * B[k][j].real - A[i][k].imag * B[k][j].imag;
-      //   sum_imag += A[i][k].real * B[k][j].imag + A[i][k].imag * B[k][j].real;
-      // }
       C[i][j].real = sum_real;
       C[i][j].imag = sum_imag;
     }
@@ -239,7 +234,7 @@ int main(int argc, char ** argv)
   gettimeofday(&pre_time, NULL);
 
   /* use a simple matmul routine to produce control result */
-  matmul(A, B, control_matrix, a_dim1, a_dim2, b_dim2);
+ matmul(A, B, control_matrix, a_dim1, a_dim2, b_dim2);
 
   /* record starting time */
   gettimeofday(&start_time, NULL);
@@ -251,7 +246,7 @@ int main(int argc, char ** argv)
   gettimeofday(&stop_time, NULL);
 
   /* compute elapsed times and speedup factor */
-  control_time = time_diff(&pre_time, &start_time);
+ control_time = time_diff(&pre_time, &start_time);
   mul_time = time_diff(&start_time, &stop_time);
   speedup = (float) control_time / mul_time;
 
