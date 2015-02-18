@@ -36,7 +36,17 @@ void write_out(struct complex ** a, int dim1, int dim2)
     printf("%.3f + %.3fi\n", a[i][dim2-1].real, a[i][dim2-1].imag);
   }
 }
+void write_out_check(struct complex ** a, int dim1, int dim2)
+{
+  int i, j;
 
+  for ( i = 0; i < dim1; i++ ) {
+    for ( j = 0; j < dim2 - 1; j++ ) {
+      printf("[%.3f,%.3fi|%p]", a[i][j].real, a[i][j].imag,&a[i][j]);
+    }
+    printf("[%.3f,%.3fi|%p]\n", a[i][dim2-1].real, a[i][dim2-1].imag,&a[i][dim2-1]);
+  }
+}
 
 /* create new empty matrix */
 struct complex ** new_empty_matrix(int dim1, int dim2)
@@ -157,6 +167,9 @@ void matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a
     }
   }
 }
+/*
+* This method is called when the matrix size is too small to be affected by threading
+*/
 void no_omp_matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a_dim1, int a_dim2, int b_dim2){
   for (int i = 0; i < a_dim1; i++ ) {
     for(int j = 0; j < b_dim2; j++ ) {
@@ -171,7 +184,9 @@ void no_omp_matmul(struct complex ** A, struct complex ** B, struct complex ** C
     }
   }
 }
-/* the fast version of matmul written by the team */
+/*
+* Precondition = B is transposed
+*/
 void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, int a_dim1, int a_dim2, int b_dim2) {
   int s;
   /*
@@ -202,11 +217,21 @@ void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, 
   for (int i = 0; i < a_dim1; i++ ) {
     for(int j = 0; j < b_dim2; j++ ) {
       /*
-      * Use these 
+      * Use these variables to store intermediate results, these are unique to each thread
+      * These will most likely be in register all of the time since the compiler isn't stoopid
+      * enough to let these sit in memory.
+      * Notice the lack of struct complex ** sum and struct complex ** product in the code.
+      * We got rid of these to reduce memory allocation overhears.
+      * Each thread will only ever write to 1 location, and will read from many so there's
+      * no need for a critical section
       */
       float sum_real = 0.0;
       float sum_imag = 0.0;
       for (int k = 0; k < a_dim2; k++ ) {
+        /*
+        * Vectorisation is too mainstream. We tried it but it just slowed out code down.
+        * GCC -O3 is too smart.
+        */
         sum_real += A[i][k].real * B[j][k].real - A[i][k].imag * B[j][k].imag;
         sum_imag += A[i][k].real * B[j][k].imag + A[i][k].imag * B[j][k].real;
       }
@@ -215,15 +240,18 @@ void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, 
     }
   }
 }
-long long time_diff(struct timeval * start, struct timeval * end) {
-  return (end->tv_sec - start->tv_sec) * 1000000L + (end->tv_usec - start->tv_usec);
-}
+/*
+* Transposes matrix B into T.
+*/
 void transpose(struct complex ** B,struct complex **T,int r, int c){
   for(int i = 0;i< r;i++){
     for(int j = 0; j < c;j++){
       T[j][i] = B[i][j];
     }
   }
+}
+long long time_diff(struct timeval * start, struct timeval * end) {
+  return (end->tv_sec - start->tv_sec) * 1000000L + (end->tv_usec - start->tv_usec);
 }
 int main(int argc, char ** argv)
 {
@@ -304,7 +332,6 @@ int main(int argc, char ** argv)
   if (mul_time > 0 && control_time > 0) {
     printf("speedup: %.2fx\n", speedup);
   }
-
   /* now check that the team's matmul routine gives the same answer
      as the known working version */
   errs = check_result(C, control_matrix, a_dim1, b_dim2);
