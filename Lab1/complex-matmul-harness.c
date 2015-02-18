@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <xmmintrin.h>
+#include <math.h>
 
 /* the following two definitions of DEBUGGING control whether or not
    debugging information is written out. To put the program into
@@ -176,14 +177,11 @@ void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, 
   if(a_dim1<20){
     no_omp_matmul(A,B,C,a_dim1,a_dim2,b_dim2);
     return;
-  } else if(a_dim1<50){
-    s = 5;
-  } else if(a_dim1<100){
-    s =12;
-  } else if(a_dim1<200){
-    s = 30;
   } else {
-    s = 32;
+    s = (int) floor(((float)a_dim1*0.16));
+    if(s>64){
+      s=64;
+    }
   }
   omp_set_dynamic(0);
   omp_set_num_threads(s); 
@@ -201,37 +199,6 @@ void team_matmul(struct complex ** A, struct complex ** B, struct complex ** C, 
     }
   }
 }
-void team_matmul_no_t(struct complex ** A, struct complex ** B, struct complex ** C, int a_dim1, int a_dim2, int b_dim2) {
-  int s;
-  if(a_dim1<20){
-    no_omp_matmul(A,B,C,a_dim1,a_dim2,b_dim2);
-    return;
-  } else if(a_dim1<50){
-    s = 5;
-  } else if(a_dim1<100){
-    s =12;
-  } else if(a_dim1<200){
-    s = 30;
-  } else {
-    s = 32;
-  }
-  omp_set_dynamic(0);
-  omp_set_num_threads(s); 
-  #pragma omp parallel for
-  for (int i = 0; i < a_dim1; i++ ) {
-    for(int j = 0; j < b_dim2; j++ ) {
-      float sum_real = 0.0;
-      float sum_imag = 0.0;
-      for (int k = 0; k < a_dim2; k++ ) {
-        sum_real += A[i][k].real * B[k][j].real - A[i][k].imag * B[k][j].imag;
-        sum_imag += A[i][k].real * B[k][j].imag + A[i][k].imag * B[k][j].real;
-      }
-      C[i][j].real = sum_real;
-      C[i][j].imag = sum_imag;
-    }
-  }
-}
-
 long long time_diff(struct timeval * start, struct timeval * end) {
   return (end->tv_sec - start->tv_sec) * 1000000L + (end->tv_usec - start->tv_usec);
 }

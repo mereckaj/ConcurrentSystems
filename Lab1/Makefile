@@ -1,7 +1,7 @@
 GCC = gcc
 ICC = ~/ICC/bin/icc
 
-OPT = -O3 -fopenmp -std=c99
+OPT = -O3 -fopenmp -std=c99 -lm
 CFLAG = -march=corei7 -mtune=corei7 -mfpmath=sse,387
 
 FILES = complex-matmul-harness.c
